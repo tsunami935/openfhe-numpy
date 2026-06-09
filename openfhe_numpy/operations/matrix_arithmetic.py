@@ -408,6 +408,40 @@ def pow_block_ct(a, exp):
     raise NotImplementedError("BlockPTArray power not implemented yet.")
 
 
+def _power(x: CTArray, exp: int):
+    """Element-wise exponentiation."""
+    if not isinstance(exp, int):
+        ONP_ERROR(f"Exponent must be integer, got {type(exp).__name__}")
+
+    if exp < 0:
+        ONP_ERROR("Negative exponent not supported in homomorphic encryption")
+
+    if exp == 0:
+        return CTArray.zeros + 1
+
+    # Binary exponentiation implementation
+    base = x.clone()
+    result = None
+
+    while exp:
+        if exp & 1:
+            result = base if result is None else base * result
+        base = base * base
+        exp >>= 1
+    return result
+
+@register_tensor_function("power", [("CTArray", "int")])
+def power_ct(a, exp):
+    """Raise a tensor element-wise to an integer power."""
+    return _power(a, exp)
+
+
+@register_tensor_function("power", [("BlockCTArray", "int")])
+def power_block_ct(a, exp):
+    """Raise a block tensor element-wise to an integer power."""
+    raise NotImplementedError("BlockPTArray power not implemented yet.")
+
+
 # ------------------------------------------------------------------------------
 # Cumulative Sum Operations
 # ------------------------------------------------------------------------------

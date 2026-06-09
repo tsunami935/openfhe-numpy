@@ -149,6 +149,40 @@ def pow(a: ArrayLike, exponent: int) -> ArrayLike:
     """
     pass
 
+@tensor_function_api("power", binary=True)
+def power(a: ArrayLike, exponent: int) -> ArrayLike:
+    """
+
+    For each element of the tensor, it raises that element to the given power.
+
+    Note
+    ----
+    This only supports integer exponents due to homomorphic-encryption constraints.
+
+    Parameters
+    ----------
+    a : ArrayLike
+        Base tensor.
+    exponent : int
+        Non-negative integer exponent.
+
+    Returns
+    -------
+    out : ArrayLike
+        Element-wise 'a' raised to 'exponent'.
+
+    See Also
+    --------
+    numpy.pow : Corresponding element-wise power function.
+    numpy.linalg.matrix_power : Repeated matrix multiplication for square matrices.
+
+    Examples
+    --------
+    >>> power([1, 2, 3], 2)
+    array([1, 4, 9])
+    """
+    pass
+
 
 # ===========================
 # Matrix Operations

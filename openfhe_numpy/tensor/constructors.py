@@ -63,19 +63,27 @@ from .ctarray import CTArray
 from .ptarray import PTArray
 from .tensor import FHETensor, PackedArrayInformation
 
+# Block tensor imports
+from .block_ctarray import BlockCTArray
+from .block_ptarray import BlockPTArray
+from .block_tensor import BlockFHETensor
+
 
 def _get_block_dimensions(data: np.ndarray, slots: int) -> tuple[int, int]:
     """
     TODO: Compute the block‐matrix dimensions (rows, cols)
-    given raw `data` and number of slots.
+    given raw `data` and number of slots per row.
     """
-    pass
+    assert is_power_of_two(slots ** 2)
+    block_shape = (int(np.ceil(data.shape[0] / slots)), int(np.ceil(data.shape[1] / slots)))
+    return block_shape
 
 
 def block_array(
     cc: CryptoContext,
     data: np.ndarray | Number | list,
     batch_size: Optional[int] = None,
+    block_size: Optional[int] = None,
     order: int = ArrayEncodingType.ROW_MAJOR,
     fhe_type: Literal["C", "P"] = "C",
     mode: str = "tile",
@@ -92,7 +100,7 @@ def block_array(
     data       : np.ndarray | Number | list
     batch_size : Optional[int]
     order      : ArrayEncodingType
-    type      : "C" for ciphertext, "P" for plaintext
+    type       : "C" for ciphertext, "P" for plaintext
     mode       : padding mode ("tile" or "zero")
     package    : Optional prepacked dict from `_pack_array`
     public_key : PublicKey (required for encryption)
@@ -101,7 +109,57 @@ def block_array(
     -------
     FHETensor
     """
-    pass
+    if order != ArrayEncodingType.ROW_MAJOR:
+        raise NotImplementedError("Only ROW_MAJOR order is currently supported.")
+    if package is not None:
+        raise NotImplementedError("Package is not supported yet.")
+    
+    if batch_size is None:
+        batch_size = cc.GetBatchSize()
+    
+    width = block_size if block_size is not None else batch_size
+    block_shape = _get_block_dimensions(data, width)    
+    blocks = []
+    for i in range(block_shape[0]):
+        for j in range(block_shape[1]):
+            block = data[width * i : width * (i + 1), width * j : width * (j + 1)]
+            if (width, width) != block_shape:
+                block = np.pad(
+                    block,
+                    (
+                        (0, width - block.shape[0]),
+                        (0, width - block.shape[1]),
+                    ),
+                )
+            encoded = array(cc, block, batch_size, order, fhe_type, mode, package, public_key)
+            blocks.append(encoded)
+
+    padded_shape = (block_shape[0] * width, block_shape[1] * width)
+    if fhe_type == "P":
+        return BlockPTArray(
+            blocks,  # data
+            block_shape, # block_shape
+            data.shape,  # original_shape
+            batch_size,  # batch_size
+            width, # ncols
+            order,  # order
+        )
+    elif fhe_type == "C":
+        if public_key is None:
+            ONP_ERROR("Public key must be provided for ciphertext encoding.")
+        try:
+            return BlockCTArray(
+                blocks,  # data
+                block_shape, # block_shape
+                data.shape,  # original_shape
+                batch_size,  # batch_size
+                width, # ncols
+                order,  # order
+            )
+        except Exception as e:
+            ONP_ERROR(f"Failed to encrypt: {e}")
+    else:
+        ONP_ERROR(f"type must be 'C' or 'P', got '{fhe_type}'.")
 
 
 def _pack_array(

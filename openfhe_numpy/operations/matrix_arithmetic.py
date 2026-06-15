@@ -46,6 +46,7 @@ from .dispatch import register_tensor_function
 
 
 from openfhe_numpy.tensor.ctarray import CTArray
+from openfhe_numpy.tensor.block_ctarray import BlockCTArray
 from openfhe_numpy.utils.errors import (
     ONP_ERROR,
     ONPIncompatibleShape,
@@ -123,13 +124,28 @@ def add_scalar_cta(scalar, a):
 )
 def add_block_ct(a, b):
     """Add two block tensors."""
-    raise NotImplementedError("BlockPTArray and BlockCTArray addition not implemented yet.")
+    assert a.original_shape == b.original_shape
+    return BlockCTArray(
+        [x + y for x,y in zip(a.blocks, b.blocks)],
+        a.block_shape,
+        a.original_shape,
+        a.batch_size,
+        a.ncols,
+        a.order
+    )
 
 
 @register_tensor_function("add", [("BlockCTArray", "scalar")])
 def add_block_ct_scalar(a, scalar):
     """Add a scalar to a block x."""
-    raise NotImplementedError("BlockPTArray and scalar addition not implemented yet.")
+    return BlockCTArray(
+        [x + scalar for x in a.blocks],
+        a.block_shape,
+        a.original_shape,
+        a.batch_size,
+        a.ncols,
+        a.order
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -243,13 +259,28 @@ def multiply_ct_scalar(a, scalar):
 )
 def multiply_block_ct(a, b):
     """Multiply two block tensors element-wise."""
-    raise NotImplementedError("BlockPTArray multiplication not implemented yet.")
+    assert a.original_shape == b.original_shape
+    return BlockCTArray(
+        [x * y for x,y in zip(a.blocks, b.blocks)],
+        a.block_shape,
+        a.original_shape,
+        a.batch_size,
+        a.ncols,
+        a.order
+    )
 
 
 @register_tensor_function("multiply", [("BlockCTArray", "scalar")])
 def multiply_block_ct_scalar(a, scalar):
     """Multiply a block tensor by a scalar."""
-    raise NotImplementedError("BlockPTArray and scalar multiplication not implemented yet.")
+    return BlockCTArray(
+        [x * scalar for x in a.blocks],
+        a.block_shape,
+        a.original_shape,
+        a.batch_size,
+        a.ncols,
+        a.order
+    )
 
 
 ##############################################################################
@@ -328,6 +359,32 @@ def matmul_ct(a, b):
     """Perform matrix multiplication between two tensors."""
     return _matmul_ct(a, b)
 
+@register_tensor_function(
+    "matmul", [("BlockCTArray", "BlockCTArray"), ("BlockCTArray", "BlockPTArray"), ("BlockPTArray", "BlockCTArray")]
+)
+def matmul_block_ct(a, b):
+    """Perform matrix multiplication between two tensors."""
+    assert a.original_shape[1] == b.original_shape[0]
+    assert a.block_shape[1] == b.block_shape[0]
+    assert a.ncols == b.ncols
+    new_block_shape = (a.block_shape[0], b.block_shape[1])
+    res_blocks = [None for i in range(np.prod(new_block_shape))]
+    for i in range(a.block_shape[0]):
+        for j in range(a.block_shape[1]):
+            for k in range(b.block_shape[1]):
+                p =  a.blocks[i * a.block_shape[1] + j] @ b.blocks[j * b.block_shape[1] + k]
+                if res_blocks[i * b.block_shape[1] + k]:
+                    res_blocks[i * b.block_shape[1] + k] += p
+                else:
+                    res_blocks[i * b.block_shape[1] + k] = p
+    return BlockCTArray(
+        res_blocks,
+        new_block_shape,
+        (a.original_shape[0], b.original_shape[1]),
+        a.batch_size,
+        a.ncols,
+        a.order
+    )
 
 # ------------------------------------------------------------------------------
 # Dot Product Operations
@@ -359,6 +416,25 @@ def dot_ct(a, b):
 def transpose_ct(a):
     """Transpose array axes (2-D: swap rows/cols). For 1-D, the array is unchanged."""
     return a._transpose()
+
+@register_tensor_function("transpose", [("BlockCTArray",)])
+def transpose_block_ct(a):
+    """Transpose array axes (2-D: swap rows/cols). For 1-D, the array is unchanged."""
+    transposed = [None] * np.prod(a.block_shape)
+    nrows, ncols = a.block_shape
+
+    for i in range(nrows):
+        for j in range(ncols):
+            # Calculate the 1D index for the original matrix
+            old_idx = i * ncols + j
+            
+            # Calculate the 1D index for the transposed matrix
+            new_idx = j * nrows + i
+            
+            # Map the value to its new position
+            transposed[new_idx] = a.blocks[old_idx].T
+    new_shape = (a.original_shape[1], a.original_shape[0])
+    return BlockCTArray(transposed, (ncols, nrows), new_shape, a.batch_size, a.ncols, a.order)
 
 
 ##############################################################################
@@ -439,7 +515,14 @@ def power_ct(a, exp):
 @register_tensor_function("power", [("BlockCTArray", "int")])
 def power_block_ct(a, exp):
     """Raise a block tensor element-wise to an integer power."""
-    raise NotImplementedError("BlockPTArray power not implemented yet.")
+    return BlockCTArray(
+        [x ** exp for x in a.blocks],
+        a.block_shape,
+        a.original_shape,
+        a.batch_size,
+        a.ncols,
+        a.order
+    )
 
 
 # ------------------------------------------------------------------------------

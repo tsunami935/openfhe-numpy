@@ -9,7 +9,7 @@ from .block_ctarray import BlockCTArray
 
 
 # Import tensor constructors
-from .constructors import array
+from .constructors import array, block_array
 
 # Define public API
 __all__ = [
@@ -20,6 +20,7 @@ __all__ = [
     "BlockFHETensor",
     "BlockCTArray",
     "array",
+    "block_array"
 ]
 
 

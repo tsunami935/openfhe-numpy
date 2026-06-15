@@ -32,6 +32,7 @@
 from openfhe import Ciphertext
 from .block_tensor import BlockFHETensor
 
+import numpy as np
 
 class BlockCTArray(BlockFHETensor[Ciphertext]):
     tensor_priority = 40  # Higher priority than CTArray
@@ -43,7 +44,11 @@ class BlockCTArray(BlockFHETensor[Ciphertext]):
         return self.__str__()
 
     def clone(self, blocks=None):
-        pass
+        return BlockFHETensor(blocks.clone(), self.block_shape, self.original_shape, self.batch_size, self.ncols, self.order)
 
-    def decrypt(self, secret_key):
-        pass
+    def decrypt(self, secret_key, unpack_type="original"):
+        stack = []
+        for i in range(self.block_shape[0]):
+            row = [block.decrypt(secret_key, unpack_type) for block in self.blocks[i * self.block_shape[1] : (i + 1) * self.block_shape[1]]]
+            stack.append(np.concatenate(row, axis=1))
+        return np.concatenate(stack, axis=0)[:self.original_shape[0], :self.original_shape[1]]

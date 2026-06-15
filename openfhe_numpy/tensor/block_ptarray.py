@@ -29,31 +29,22 @@
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # ==================================================================================
 
-from typing import Generic
-from openfhe_numpy.openfhe_numpy import ArrayEncodingType
-from .tensor import FHETensor, TPL
+from openfhe import Plaintext
+from .block_tensor import BlockFHETensor
 
+import numpy as np
 
-class BlockFHETensor(FHETensor[TPL], Generic[TPL]):
-    """Base class for block tensor implementations"""
+class BlockPTArray(BlockFHETensor[Plaintext]):
+    tensor_priority = 40  # Higher priority than PTArray
 
-    def __init__(
-        self,
-        blocks,
-        block_shape,
-        original_shape,
-        batch_size,
-        ncols=1,
-        order=ArrayEncodingType.ROW_MAJOR,
-    ):
-        self._blocks = blocks
-        self._block_shape = block_shape
-        super().__init__(None, original_shape, batch_size, (ncols, ncols), order)
+    def __str__(self):
+        return f"BlockPTArray(shape={self.original_shape}, cell={len(self._blocks)} {len(self._blocks[0]) if self._blocks else 0}, block_shape={self.block_shape})"
 
-    @property
-    def blocks(self):
-        return self._blocks
+    def __repr__(self):
+        return self.__str__()
 
-    @property
-    def block_shape(self):
-        return self._block_shape
+    def clone(self, blocks=None):
+        return BlockFHETensor(blocks.clone(), self.block_shape, self.original_shape, self.batch_size, self.ncols, self.order)
+
+    def decode(self):
+        pass

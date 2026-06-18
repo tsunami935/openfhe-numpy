@@ -46,5 +46,8 @@ class BlockPTArray(BlockFHETensor[Plaintext]):
     def clone(self, blocks=None):
         return BlockFHETensor(blocks.clone(), self.block_shape, self.original_shape, self.batch_size, self.ncols, self.order)
 
+    def decrypt(self, *args, **kwargs):
+        raise NotImplementedError("Decrypt not implemented for plaintext")
+
     def decode(self):
         pass

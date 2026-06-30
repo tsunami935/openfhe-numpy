@@ -75,7 +75,12 @@ def _get_block_dimensions(data: np.ndarray, slots: int) -> tuple[int, int]:
     given raw `data` and number of slots per row.
     """
     assert is_power_of_two(slots ** 2)
-    block_shape = (int(np.ceil(data.shape[0] / slots)), int(np.ceil(data.shape[1] / slots)))
+    if data.ndim == 2:
+        block_shape = (int(np.ceil(data.shape[0] / slots)), int(np.ceil(data.shape[1] / slots)))
+    elif data.ndim == 1:
+        block_shape = (1, int(np.ceil(data.shape[0] / slots)))
+    else:
+        raise NotImplementedError("Data must be 1D or 2D.")
     return block_shape
 
 
@@ -116,25 +121,34 @@ def block_array(
     
     if batch_size is None:
         batch_size = cc.GetBatchSize()
+
+    # What if data is 1D vector?
     
     width = block_size if block_size is not None else batch_size
     block_shape = _get_block_dimensions(data, width)    
     blocks = []
-    for i in range(block_shape[0]):
-        for j in range(block_shape[1]):
-            block = data[width * i : width * (i + 1), width * j : width * (j + 1)]
-            if (width, width) != block_shape:
-                block = np.pad(
-                    block,
-                    (
-                        (0, width - block.shape[0]),
-                        (0, width - block.shape[1]),
-                    ),
-                )
-            encoded = array(cc, block, batch_size, order, fhe_type, mode, package, public_key)
-            blocks.append(encoded)
 
-    padded_shape = (block_shape[0] * width, block_shape[1] * width)
+    if data.ndim == 1:
+        for i in range(block_shape[1]):
+            blocks.append(data[width * i : width * (i + 1)])
+        blocks[-1] = np.pad(blocks[-1], (0, width - blocks[-1].size))
+        blocks = [array(cc, block, batch_size, order, fhe_type, mode, package, public_key) for block in blocks]
+
+    if data.ndim == 2:
+        for i in range(block_shape[0]):
+            for j in range(block_shape[1]):
+                block = data[width * i : width * (i + 1), width * j : width * (j + 1)]
+                if (width, width) != block_shape:
+                    block = np.pad(
+                        block,
+                        (
+                            (0, width - block.shape[0]),
+                            (0, width - block.shape[1]),
+                        ),
+                    )
+                encoded = array(cc, block, batch_size, order, fhe_type, mode, package, public_key)
+                blocks.append(encoded)
+
     if fhe_type == "P":
         return BlockPTArray(
             blocks,  # data

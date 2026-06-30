@@ -403,3 +403,9 @@ class CTArray(FHETensor[openfhe.Ciphertext]):
             raise ValueError("Invalid order.")
 
         return sum_rows_key
+    
+    def bootstrap_ct(self):
+        """Perform bootstrap."""
+        cc = self.data.GetCryptoContext()
+        self.data = cc.EvalBootstrap(self.data)
+        return self

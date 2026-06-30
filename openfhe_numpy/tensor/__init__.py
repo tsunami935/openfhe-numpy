@@ -5,6 +5,7 @@ from .tensor import BaseTensor, FHETensor
 from .ptarray import PTArray
 from .ctarray import CTArray
 from .block_tensor import BlockFHETensor
+from .block_ptarray import BlockPTArray
 from .block_ctarray import BlockCTArray
 
 
@@ -18,6 +19,7 @@ __all__ = [
     "PTArray",
     "CTArray",
     "BlockFHETensor",
+    "BlockPTArray",
     "BlockCTArray",
     "array",
     "block_array"

@@ -122,18 +122,29 @@ def add_scalar_cta(scalar, a):
 @register_tensor_function(
     "add", [("BlockCTArray", "BlockCTArray"), ("BlockCTArray", "BlockPTArray")]
 )
-def add_block_ct(a, b):
+def add_block_ct(a, b) -> BlockCTArray:
     """Add two block tensors."""
-    assert a.original_shape == b.original_shape
-    return BlockCTArray(
-        [x + y for x,y in zip(a.blocks, b.blocks)],
-        a.block_shape,
-        a.original_shape,
-        a.batch_size,
-        a.ncols,
-        a.order
-    )
-
+    if len(b.original_shape) == 1 and len(a.original_shape) == 2 and b.original_shape[0] == a.original_shape[1]:
+        return BlockCTArray(
+            [a.get_block(i, j) + b.get_block(0, j) for i in range(a.block_shape[0]) for j in range(a.block_shape[1])],
+            a.block_shape,
+            a.original_shape,
+            a.batch_size,
+            a.ncols,
+            a.order
+        )
+    elif len(a.original_shape) == 1 and len(b.original_shape) == 2:
+        return add_block_ct(b, a)
+    else:
+        assert a.original_shape == b.original_shape, f"Shapes {a.original_shape} and {b.original_shape} are not compatible."
+        return BlockCTArray(
+            [x + y for x,y in zip(a.blocks, b.blocks)],
+            a.block_shape,
+            a.original_shape,
+            a.batch_size,
+            a.ncols,
+            a.order
+        )
 
 @register_tensor_function("add", [("BlockCTArray", "scalar")])
 def add_block_ct_scalar(a, scalar):
@@ -255,19 +266,31 @@ def multiply_ct_scalar(a, scalar):
 
 @register_tensor_function(
     "multiply",
-    [("BlockCTArray", "BlockCTArray"), ("BlockCTArray", "BlockPTArray")],
+    [("BlockCTArray", "BlockCTArray"), ("BlockCTArray", "BlockPTArray"), ("BlockPTArray", "BlockCTArray")],
 )
 def multiply_block_ct(a, b):
     """Multiply two block tensors element-wise."""
-    assert a.original_shape == b.original_shape
-    return BlockCTArray(
-        [x * y for x,y in zip(a.blocks, b.blocks)],
-        a.block_shape,
-        a.original_shape,
-        a.batch_size,
-        a.ncols,
-        a.order
-    )
+    if len(b.original_shape) == 1 and len(a.original_shape) == 2 and b.original_shape[0] == a.original_shape[1]:
+        return BlockCTArray(
+            [a.get_block(i, j) * b.get_block(0, j) for i in range(a.block_shape[0]) for j in range(a.block_shape[1])],
+            a.block_shape,
+            a.original_shape,
+            a.batch_size,
+            a.ncols,
+            a.order
+        )
+    elif len(a.original_shape) == 1 and len(b.original_shape) == 2:
+        return multiply_block_ct(b, a)
+    else:
+        assert a.original_shape == b.original_shape, f"Shapes {a.original_shape} and {b.original_shape} are not compatible."
+        return BlockCTArray(
+            [x * y for x,y in zip(a.blocks, b.blocks)],
+            a.block_shape,
+            a.original_shape,
+            a.batch_size,
+            a.ncols,
+            a.order
+        )
 
 
 @register_tensor_function("multiply", [("BlockCTArray", "scalar")])

@@ -52,3 +52,10 @@ class BlockCTArray(BlockFHETensor[Ciphertext]):
             row = [block.decrypt(secret_key, unpack_type) for block in self.blocks[i * self.block_shape[1] : (i + 1) * self.block_shape[1]]]
             stack.append(np.concatenate(row, axis=1))
         return np.concatenate(stack, axis=0)[:self.original_shape[0], :self.original_shape[1]]
+    
+    def bootstrap(self):
+        """Perform bootstrap."""
+        cc = self.blocks[0].data.GetCryptoContext()
+        for i in range(len(self.blocks)):
+            self.blocks[i].data = cc.EvalBootstrap(self.blocks[i].data)
+        return self

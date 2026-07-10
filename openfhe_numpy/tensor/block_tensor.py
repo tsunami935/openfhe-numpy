@@ -58,6 +58,12 @@ class BlockFHETensor(FHETensor[TPL], Generic[TPL]):
     def block_shape(self):
         return self._block_shape
     
+    @property
+    def level(self) -> int:
+        """Get current level."""
+        assert len(self.blocks) > 0
+        return self.blocks[0].level
+    
     def get_block(self, row: int, col: int):
         assert row < self.block_shape[0] and col < self.block_shape[1]
         return self.blocks[row * self.block_shape[1] + col]

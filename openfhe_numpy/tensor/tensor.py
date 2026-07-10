@@ -80,6 +80,10 @@ class BaseTensor(ABC, Generic[TPL]):
     @abstractmethod
     def info(self) -> dict: ...
 
+    @property
+    @abstractmethod
+    def level(self) -> int: ...
+
     @abstractmethod
     def clone(self, data: TPL = None) -> "BaseTensor[TPL]": ...
 
@@ -292,6 +296,11 @@ class FHETensor(BaseTensor[TPL], Generic[TPL]):
             "extra": self.extra,
             "ndim": self.ndim,
         }
+    
+    @property
+    def level(self) -> int:
+        """Get current level."""
+        return self.data.getLevel()
 
     @property
     def T(self):

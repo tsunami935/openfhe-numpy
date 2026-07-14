@@ -300,7 +300,7 @@ class FHETensor(BaseTensor[TPL], Generic[TPL]):
     @property
     def level(self) -> int:
         """Get current level."""
-        return self.data.getLevel()
+        return self.data.GetLevel()
 
     @property
     def T(self):

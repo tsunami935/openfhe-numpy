@@ -53,9 +53,20 @@ class BlockCTArray(BlockFHETensor[Ciphertext]):
             stack.append(np.concatenate(row, axis=1))
         return np.concatenate(stack, axis=0)[:self.original_shape[0], :self.original_shape[1]]
     
+    def rescale(self, level=None):
+        """Perform rescale."""
+        for block in self.blocks:
+            block.rescale(level)
+        return self
+    
     def bootstrap(self):
         """Perform bootstrap."""
         cc = self.blocks[0].data.GetCryptoContext()
         for i in range(len(self.blocks)):
             self.blocks[i].data = cc.EvalBootstrap(self.blocks[i].data)
+        return self
+    
+    def retile_data(self):
+        for block in self.blocks:
+            block.retile_data()
         return self

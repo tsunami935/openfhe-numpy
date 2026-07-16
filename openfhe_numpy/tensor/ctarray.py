@@ -40,7 +40,7 @@ from ..utils.matlib import next_power_of_two
 from ..utils.constants import UnpackType
 from ..utils.errors import ONP_ERROR
 from ..utils.packing import process_packed_data
-from ..utils._helper_slots_ops import _get_single_element
+from ..utils._helper_slots_ops import _get_single_element, _duplicate_block
 
 from .tensor import FHETensor
 
@@ -404,8 +404,27 @@ class CTArray(FHETensor[openfhe.Ciphertext]):
 
         return sum_rows_key
     
+    def rescale(self, level=None):
+        """Perform rescale."""
+        if level and level >= self.level:
+            t = level - self.level
+        else:
+            t = 1
+        cc = self.data.GetCryptoContext()
+        for _ in range(t):
+            self.data = cc.Rescale(self.data)
+        return self
+    
     def bootstrap(self):
         """Perform bootstrap."""
         cc = self.data.GetCryptoContext()
         self.data = cc.EvalBootstrap(self.data)
         return self
+
+    def retile_data(self):
+        assert self.order == ArrayEncodingType.ROW_MAJOR, "Only row major supported currently."
+        n_repeats = self.batch_size // self.size
+
+        self.data = _duplicate_block(self.data, n_repeats, self.size)
+        return self
+    

@@ -30,6 +30,8 @@
 # ==================================================================================
 
 import io
+import json
+import struct
 from typing import Optional, Tuple, Union
 import numpy as np
 import openfhe
@@ -267,18 +269,15 @@ class CTArray(FHETensor[openfhe.Ciphertext]):
         """
         Serialize ciphertext and metadata to a dictionary.
         """
-        stream = io.BytesIO()
-        if not openfhe.Serialize(self.data, stream):
-            ONP_ERROR("Failed to serialize ciphertext.")
+        stream = openfhe.Serialize(self.data, openfhe.JSON)
 
-        return {
-            "type": self.type,
+        data_dict =  {
             "original_shape": self.original_shape,
             "batch_size": self.batch_size,
-            "ncols": self.ncols,
-            "order": self.order,
-            "ciphertext": stream.getvalue().hex(),
+            "order": int(self.order),
+            "ciphertext": stream,
         }
+        return data_dict
 
     @classmethod
     def deserialize(cls, obj: dict) -> "CTArray":
@@ -289,24 +288,19 @@ class CTArray(FHETensor[openfhe.Ciphertext]):
             "ciphertext",
             "original_shape",
             "batch_size",
-            "ncols",
             "order",
         ]
         for key in required_keys:
             if key not in obj:
                 ONP_ERROR(f"Missing required key '{key}' in serialized object.")
 
-        stream = io.BytesIO(bytes.fromhex(obj["ciphertext"]))
-        ciphertext = openfhe.Ciphertext()
-        if not openfhe.Deserialize(ciphertext, stream):
-            ONP_ERROR("Failed to deserialize ciphertext.")
-
-        return cls(
-            ciphertext,
-            tuple(obj["original_shape"]),
-            obj["batch_size"],
-            obj["ncols"],
-            obj["order"],
+        ciphertext = openfhe.DeserializeCiphertextString(obj["ciphertext"], openfhe.JSON)
+        return CTArray(
+            data = ciphertext,
+            original_shape = obj["original_shape"],
+            batch_size = obj["batch_size"],
+            new_shape = obj["original_shape"],
+            order = ArrayEncodingType.ROW_MAJOR if obj["order"] == 0 else ArrayEncodingType.COL_MAJOR,
         )
 
     def __repr__(self) -> str:
@@ -427,4 +421,3 @@ class CTArray(FHETensor[openfhe.Ciphertext]):
 
         self.data = _duplicate_block(self.data, n_repeats, self.size)
         return self
-    

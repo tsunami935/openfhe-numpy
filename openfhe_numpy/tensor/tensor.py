@@ -90,6 +90,13 @@ class BaseTensor(ABC, Generic[TPL]):
     @abstractmethod
     def decrypt(self, *args, **kwargs): ...
 
+    @abstractmethod
+    def serialize(self) -> dict: ...
+
+    @classmethod
+    @abstractmethod
+    def deserialize(cls, obj: dict) -> "BaseTensor[TPL]": ...
+
 
 # -----------------------------------------------------------
 # FHETensor - Generic Tensor with Metadata

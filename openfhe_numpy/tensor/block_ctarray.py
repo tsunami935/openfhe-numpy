@@ -31,6 +31,9 @@
 
 from openfhe import Ciphertext
 from .block_tensor import BlockFHETensor
+from .ctarray import CTArray
+from ..utils.errors import ONP_ERROR
+from ..openfhe_numpy import ArrayEncodingType
 
 import numpy as np
 
@@ -52,6 +55,49 @@ class BlockCTArray(BlockFHETensor[Ciphertext]):
             row = [block.decrypt(secret_key, unpack_type) for block in self.blocks[i * self.block_shape[1] : (i + 1) * self.block_shape[1]]]
             stack.append(np.concatenate(row, axis=1))
         return np.concatenate(stack, axis=0)[:self.original_shape[0], :self.original_shape[1]]
+
+    def serialize(self) -> dict:
+        """
+        Serialize ciphertext and metadata to a dictionary.
+        """
+        block_data = [block.serialize() for block in self.blocks]
+
+        data_dict =  {
+            "original_shape": self.original_shape,
+            "batch_size": self.batch_size,
+            "block_shape": self.block_shape,
+            "order": int(self.order),
+            "ncols": self.ncols,
+            "blocks": block_data,
+        }
+        return data_dict
+
+    @classmethod
+    def deserialize(cls, obj: dict) -> "BlockCTArray":
+        """
+        Deserialize a dictionary back into a CTArray.
+        """
+        required_keys = [
+            "blocks",
+            "original_shape",
+            "block_shape",
+            "batch_size",
+            "ncols",
+            "order",
+        ]
+        for key in required_keys:
+            if key not in obj:
+                ONP_ERROR(f"Missing required key '{key}' in serialized object.")
+
+        blocks = [CTArray.deserialize(block_data) for block_data in obj['blocks']]
+        return BlockCTArray(
+            data = blocks,
+            block_shape=obj["block_shape"],
+            original_shape = obj["original_shape"],
+            batch_size = obj["batch_size"],   
+            ncols=obj["ncols"],         
+            order = ArrayEncodingType.ROW_MAJOR if obj["order"] == 0 else ArrayEncodingType.COL_MAJOR,
+        )
     
     def rescale(self, level=None):
         """Perform rescale."""

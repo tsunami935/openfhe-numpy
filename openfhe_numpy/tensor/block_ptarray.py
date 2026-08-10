@@ -49,5 +49,12 @@ class BlockPTArray(BlockFHETensor[Plaintext]):
     def decrypt(self, *args, **kwargs):
         raise NotImplementedError("Decrypt not implemented for plaintext")
 
+    def serialize(self) -> dict:
+            raise NotImplementedError("Serialize not implemented for plaintext")
+    
+    @classmethod
+    def deserialize(cls, obj: dict) -> "BlockPTArray":
+        raise NotImplementedError("Deserialize not implemented for plaintext")
+
     def decode(self):
         pass

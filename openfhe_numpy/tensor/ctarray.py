@@ -297,9 +297,9 @@ class CTArray(FHETensor[openfhe.Ciphertext]):
         ciphertext = openfhe.DeserializeCiphertextString(obj["ciphertext"], openfhe.JSON)
         return CTArray(
             data = ciphertext,
-            original_shape = obj["original_shape"],
+            original_shape = tuple(obj["original_shape"]),
             batch_size = obj["batch_size"],
-            new_shape = obj["original_shape"],
+            new_shape = tuple(obj["original_shape"]),
             order = ArrayEncodingType.ROW_MAJOR if obj["order"] == 0 else ArrayEncodingType.COL_MAJOR,
         )
 

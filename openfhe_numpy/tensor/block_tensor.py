@@ -51,11 +51,11 @@ class BlockFHETensor(FHETensor[TPL], Generic[TPL]):
         super().__init__(None, original_shape, batch_size, (ncols, ncols), order)
 
     @property
-    def blocks(self):
+    def blocks(self) -> list[FHETensor[TPL]]:
         return self._blocks
 
     @property
-    def block_shape(self):
+    def block_shape(self) -> tuple[int]:
         return self._block_shape
     
     @property
@@ -64,6 +64,6 @@ class BlockFHETensor(FHETensor[TPL], Generic[TPL]):
         assert len(self.blocks) > 0
         return self.blocks[0].level
     
-    def get_block(self, row: int, col: int):
+    def get_block(self, row: int, col: int) -> FHETensor[TPL]:
         assert row < self.block_shape[0] and col < self.block_shape[1]
         return self.blocks[row * self.block_shape[1] + col]
